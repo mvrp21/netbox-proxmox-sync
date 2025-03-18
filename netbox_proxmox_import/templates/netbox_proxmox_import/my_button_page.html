@@ -1,0 +1,31 @@
+{% extends 'base/layout.html' %}
+{% block header %}
+  <h1>My Custom Header</h1>
+{% endblock header %}
+
+{% block content %}
+<button id="execute-action" class="btn btn-danger p-3 rounded">Execute Action</button>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const button = document.getElementById('execute-action');
+        button.addEventListener('click', function() {
+            fetch("ok", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({})  // If you need to send data, pass it here
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('Action Executed: ' + data.status);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error executing action');
+            });
+        });
+    });
+</script>
+{% endblock content %}
