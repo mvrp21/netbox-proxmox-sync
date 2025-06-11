@@ -3,8 +3,10 @@ import django_tables2 as tables
 from netbox.tables import NetBoxTable, ChoiceFieldColumn
 from .models import ProxmoxConnection
 
+
 class ProxmoxConnectionTable(NetBoxTable):
 
+    id = tables.Column(linkify=True)
     cluster = tables.Column(linkify=True)
 
     class Meta(NetBoxTable.Meta):

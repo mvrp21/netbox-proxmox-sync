@@ -1,8 +1,9 @@
-from django.urls import path
+from netbox.api.routers import NetBoxRouter
 from . import views
 
-app_name = "netbox_proxmox_import"
+app_name = 'netbox_proxmox_import'
 
-urlpatterns = (
-    path('', views.Test.as_view(), name="test"),
-)
+router = NetBoxRouter()
+router.register('connections', views.ProxmoxConnectionViewSet)
+
+urlpatterns = router.urls

@@ -6,10 +6,10 @@ from netbox.models import NetBoxModel
 class ProxmoxConnection(NetBoxModel):
 
     def get_absolute_url(self):
-        return reverse('plugins:netbox_proxmox_import:connection', args=[self.pk])
+        return reverse('plugins:netbox_proxmox_import:proxmoxconnection', args=[self.pk])
 
     def __str__(self):
-        return self.cluster
+        return f'{self.cluster} (Proxmox)'
 
     url = models.URLField(max_length=255)
     user = models.CharField(max_length=127)
