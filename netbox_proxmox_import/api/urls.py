@@ -1,9 +1,14 @@
 from netbox.api.routers import NetBoxRouter
+from django.urls import path
 from . import views
 
 app_name = 'netbox_proxmox_import'
 
 router = NetBoxRouter()
-router.register('connections', views.ProxmoxConnectionViewSet)
+router.register('proxmox-connections', views.ProxmoxConnectionViewSet)
 
 urlpatterns = router.urls
+
+urlpatterns += (
+    path('sync/', views.Test.as_view(), name="sync"),
+)

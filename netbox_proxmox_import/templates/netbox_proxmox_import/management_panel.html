@@ -1,11 +1,8 @@
-{% extends 'base/layout.html' %}
 {% block header %}
   <h1>My Custom Header</h1>
 {% endblock header %}
 
 {% block content %}
-
-{% csrf_token %}
 
 <button id="execute-action" class="btn btn-danger p-3 rounded">Execute Action</button>
 
@@ -14,18 +11,18 @@
     document.addEventListener("DOMContentLoaded", function() {
         const button = document.getElementById('execute-action');
         button.addEventListener('click', function() {
-            fetch("/api/plugins/nbp-sync/", {
+            fetch("/api/plugins/nbp-sync/sync/", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrftoken
                 },
-                body: JSON.stringify({})
+                // body: JSON.stringify({})
+                // TODO: render table with output
+                //       (created|updated|deleted objects)
             })
             .then(response => response.json())
-            .then(data => {
-                alert('Action Executed: ' + data.status);
-            })
+            .then(data => alert('Action Executed: ' + data.status))
             .catch(error => {
                 console.error('Error:', error);
                 alert('Error executing action');

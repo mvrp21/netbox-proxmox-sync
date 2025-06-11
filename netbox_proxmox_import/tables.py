@@ -12,4 +12,4 @@ class ProxmoxConnectionTable(NetBoxTable):
     class Meta(NetBoxTable.Meta):
         model = ProxmoxConnection
         fields = ('pk', 'id', 'cluster', 'url', 'user', 'sync_nodes')
-        default_columns = ('cluster', 'url', 'user', 'sync_nodes')
+        default_columns = ('id', 'cluster', 'url', 'user', 'sync_nodes')
