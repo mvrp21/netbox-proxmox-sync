@@ -4,18 +4,23 @@
 {% endblock header %}
 
 {% block content %}
+
+{% csrf_token %}
+
 <button id="execute-action" class="btn btn-danger p-3 rounded">Execute Action</button>
 
 <script>
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
     document.addEventListener("DOMContentLoaded", function() {
         const button = document.getElementById('execute-action');
         button.addEventListener('click', function() {
-            fetch("ok", {
+            fetch("/api/plugins/nbp-sync/", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
                 },
-                body: JSON.stringify({})  // If you need to send data, pass it here
+                body: JSON.stringify({})
             })
             .then(response => response.json())
             .then(data => {

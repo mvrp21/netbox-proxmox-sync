@@ -4,5 +4,5 @@ from . import views
 app_name = "netbox_proxmox_import"
 
 urlpatterns = (
-    path('', views.ManagementView.as_view(http_method_names=['get']), name="management_page"),
+    path('', views.Test.as_view(), name="test"),
 )
