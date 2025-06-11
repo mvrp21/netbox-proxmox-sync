@@ -1,8 +1,17 @@
-from django.shortcuts import render
-from django.http import JsonResponse
-from django.urls import reverse
-from django.views import View
+from netbox.views import generic
+from . import forms, models, tables
 
-class ManagementView(View):
-    def get(self, request, *args, **kwargs):
-        return render(request, "netbox_proxmox_import/management_page.html")
+
+class ProxmoxConnectionView(generic.ObjectView):
+    queryset = models.ProxmoxConnection.objects.all()
+
+class ProxmoxConnectionListView(generic.ObjectListView):
+    queryset = models.ProxmoxConnection.objects.all()
+    table = tables.ProxmoxConnectionTable
+
+class ProxmoxConnectionEditView(generic.ObjectEditView):
+    queryset = models.ProxmoxConnection.objects.all()
+    form = forms.ProxmoxConnectionForm
+
+class ProxmoxConnectionDeleteView(generic.ObjectDeleteView):
+    queryset = models.ProxmoxConnection.objects.all()

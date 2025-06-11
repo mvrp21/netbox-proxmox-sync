@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name = 'netbox_proxmox_import',
-    version = '0.3',
+    version = '0.4',
     description = 'NetBox plugin to Import Proxmox Cluster data.',
     install_requires=[],
     packages = find_packages(),
