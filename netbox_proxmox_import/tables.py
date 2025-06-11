@@ -6,10 +6,11 @@ from .models import ProxmoxConnection
 
 class ProxmoxConnectionTable(NetBoxTable):
 
-    id = tables.Column(linkify=True)
+    domain = tables.Column(linkify=True)
+    # id = tables.Column(linkify=True)
     cluster = tables.Column(linkify=True)
 
     class Meta(NetBoxTable.Meta):
         model = ProxmoxConnection
-        fields = ('pk', 'id', 'cluster', 'url', 'user', 'sync_nodes')
-        default_columns = ('id', 'cluster', 'url', 'user', 'sync_nodes')
+        fields = ('pk', 'id', 'cluster', 'domain', 'user', 'sync_nodes')
+        default_columns = ('domain', 'user', 'sync_nodes')

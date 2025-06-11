@@ -6,18 +6,21 @@
 
 <button id="execute-action" class="btn btn-danger p-3 rounded">Execute Action</button>
 
+OBJECT ID: {{ object.id }}
+
 <script>
     const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
     document.addEventListener("DOMContentLoaded", function() {
         const button = document.getElementById('execute-action');
         button.addEventListener('click', function() {
-            fetch("/api/plugins/nbp-sync/sync/", {
+            const connection_id = {{ object.id }};
+            fetch(`/api/plugins/nbp-sync/sync/${connection_id}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrftoken
                 },
-                // body: JSON.stringify({})
+                // body: JSON.stringify({ connection_id: '{{ object.id }}' })
                 // TODO: render table with output
                 //       (created|updated|deleted objects)
             })

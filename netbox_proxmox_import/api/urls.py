@@ -10,5 +10,5 @@ router.register('proxmox-connections', views.ProxmoxConnectionViewSet)
 urlpatterns = router.urls
 
 urlpatterns += (
-    path('sync/', views.Test.as_view(), name="sync"),
+    path('sync/<int:connection_id>', views.Sync.as_view(), name="sync"),
 )
