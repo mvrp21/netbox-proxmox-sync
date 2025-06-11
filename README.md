@@ -7,36 +7,31 @@ This is a NetBox plugin that fetches information from a Proxmox server and impor
 ## Features
 
 - Imports virtual machines from Proxmox into NetBox as devices.
-- Syncs Proxmox node details (e.g., hostname, CPU, memory) into NetBox.
-- Automatically updates device and node information at regular intervals.
+- Supports synchronization of multiple clusters.
+- Can sync Proxmox node details (e.g., hostname, CPU, memory) into NetBox, if desired.
+- Complete management through the UI.
+- Automatically updates device and node information at regular intervals (maybe? I'll see about that).
 
 ## Installation
 
-1. Clone the repository into your NetBox plugins directory:
+Hold on, didn't even finish this just yet.
 
-    ```bash
-   cd /opt/netbox/netbox/plugins
-   git clone https://github.com/mvrp21/proxmox-netbox-sync.git proxmox_to_netbox
+## Usage
 
-2. Install any required dependencies (e.g., requests, proxmoxer):
+Create you virtualization cluster as you would normally.
 
-    ```bash
-    pip install -r /opt/netbox/netbox/plugins/nbp-sync/requirements.txt
-    ```
+This plugin adds a model called ProxmoxCluster, which stores the actual connection configuration to your Proxmox clusters. Access this page via the path `/plugins/nbp-sync/clusters` or using the sidebar, under "plugins".
 
-3. Add the plugin to the `PLUGINS` list in your `configuration.py`:V
+Maybe "ProxmoxConnection" is a better name?
 
-    ```python
-    PLUGINS = [
-        'proxmox_netbox_sync',
-    ]
-    ```
+Each cluster connection gets its own configuration.
 
-4. Configure the Proxmox API credentials in the plugin settings (`proxmox_to_netbox/settings.py`):
+Configuration options are (could//may//will be, but whatever):
+- **Cluster URL (required)**: URL to access the Proxmox cluster (check your firewall and DNS!).
+- **User (required)**: Username to access the Proxmox API.
+- **Access Token (required)**: Token for this user to use the Proxmox API.
+- **Sync Nodes(default=False)**: If the plugin should also import the information from the nodes or not. Note that if there are conflicts (node does not exist and should / node information does not match, etc.) the plugin will fail to synchronize the data and will inform you of the errors encountered.
 
-    ``` pythoj
-    # Imporntant! Use a READ-ONLY API KEY! This plugin DOES NOT WRITE TO PROXMOX!
-    PROXMOX_API_URL = 'https://your.proxmox.server:8006/api2/json'
-    PROXMOX_API_USER = 'root@pam'
-    PROXMOX_API_PASSWORD = 'yourpassword'
-    ```
+**Use a read-only Proxmox user! This plugin DOES NOT send writes to Proxmox!**
+
+Note: when deleting a cluster connection all the related information will be deleted with it, such as VMs, but also the Nodes if you configured the connection to manage them too.
