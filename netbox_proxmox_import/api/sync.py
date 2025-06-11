@@ -1,12 +1,14 @@
 import json
 
 from .proxmox.connector import Proxmox
+from .netbox.parser import NetBoxParser
 from .. import models
 
 
 def sync_cluster(connection_id):
     proxmox_connection = models.ProxmoxConnection.objects.get(pk=connection_id)
-    return json.dumps(get_proxmox_data(proxmox_connection))
+    proxmox_data = get_proxmox_data(proxmox_connection)
+    return json.dumps(parse_proxmox_data(proxmox_data))
 
 
 def get_proxmox_data(proxmox_connection):
@@ -28,5 +30,13 @@ def get_proxmox_data(proxmox_connection):
         'vminterfaces': px.get_vminterfaces(),
     }
 
-def update_netbox(proxmox_data):
+def parse_proxmox_data(proxmox_data):
+    nb = NetBoxParser()
+    return {
+        'tags': nb.parse_tags(proxmox_data['tags']),
+        'vms': nb.parse_vms(proxmox_data['vms']),
+        'vminterfaces': nb.parse_vminterfaces(proxmox_data['vminterfaces']),
+    }
+
+def update_netbox(parsed_data):
     pass

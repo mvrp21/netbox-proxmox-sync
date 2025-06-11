@@ -3,13 +3,13 @@ import re
 
 class NetBoxParser:
 
+    # FIXME: this comes from the old idea, we're now creating the cluster first and THEN syncing it
     INFO = {
         "tag_color": "#d1d1d1",
         "cluster_name": "Proxmox C3SL",
         "cluster_type": "Proxmox",
         "cluster_description": "Production Proxmox Cluster",
         "vm_role": "Virtual Machine",
-        "site": None,
     }
 
     def __init__(self, remaps={}):
@@ -51,6 +51,7 @@ class NetBoxParser:
             "role": {"name": self.INFO["vm_role"]},
             "disk": int(px_vm["maxdisk"] / 2 ** 20),  # B -> MB
             "tags": [{"name": tag} for tag in px_vm["tags"]],
+            # TODO: add custom field with plugin (or does it have to be done manually?)
             "custom_fields": {"vmid": px_vm["vmid"]},
         }
         return nb_vm
@@ -60,8 +61,8 @@ class NetBoxParser:
         for px_interface in px_interface_list:
             mac, vlanid = self._extract_mac_vlan(px_interface["info"])
             interface = {
-                "name": px_interface["name"],
                 # FIXME: VM name is possibly not unique
+                "name": px_interface["name"],
                 "virtual_machine": {"name": px_interface["vm"]},
                 # FIXME: v4.2 breaks mac_address field
                 "mac_address": mac,

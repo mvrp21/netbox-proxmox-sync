@@ -1,5 +1,3 @@
-import json
-
 from netbox.api.viewsets import NetBoxModelViewSet
 
 from django.http import HttpResponse
