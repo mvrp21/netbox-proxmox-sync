@@ -5,7 +5,7 @@ class NetBoxParser:
 
     # FIXME: this comes from the old idea, we're now creating the cluster first and THEN syncing it
     INFO = {
-        "tag_color": "#d1d1d1",
+        "tag_color": "d1d1d1",
         "cluster_name": "Proxmox C3SL",
         "cluster_type": "Proxmox",
         "cluster_description": "Production Proxmox Cluster",
