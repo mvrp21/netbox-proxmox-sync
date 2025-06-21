@@ -13,6 +13,7 @@ class NetBoxUpdater:
             self.devices_by_name[device.name] = device
         self.tags_by_name = {}
         self.vms_by_name = {}
+        self.cascade_deleted_vminterfaces = []
 
     def _vms_equal(self, px_vm, nb_vm):
         if nb_vm.device is None and self.devices_by_name.get(px_vm["device"]["name"]) is not None:
@@ -88,6 +89,7 @@ class NetBoxUpdater:
                 custom_field_data=vm["custom_fields"],
             )
             self.vms_by_name[vm["name"]].tags.set([self.tags_by_name.get(tag["name"]) for tag in vm["tags"]])
+            self.vms_by_name[vm["name"]].save()
         for vm in update:
             vm_entry = vm["before"]
             vm["before"] = {
@@ -95,7 +97,7 @@ class NetBoxUpdater:
                 "status": vm_entry.status,
                 "device": None if vm_entry.device is None else {"name": vm_entry.device.name},
                 "cluster": vm_entry.cluster.id,
-                "vcpus": int(vm_entry.vcpus),
+                "vcpus": 0 if vm_entry.vcpus is None else int(vm_entry.vcpus),
                 "memory": vm_entry.memory,
                 "disk": vm_entry.disk,
                 "tags": [{"name": tag.name} for tag in vm_entry.tags.all()],
@@ -112,6 +114,8 @@ class NetBoxUpdater:
             vm_entry.save()
             self.vms_by_name[vm_entry.name] = vm_entry
         for vm in delete:
+            del self.vms_by_name[vm.name]
+            self.cascade_deleted_vminterfaces.extend(vm.interfaces.all())
             vm.delete()
 
         return json.dumps({
@@ -122,10 +126,10 @@ class NetBoxUpdater:
                 "status": vm.status,
                 "device": None if vm.device is None else {"name": vm.device.name},
                 "cluster": vm.cluster.id,
-                "vcpus": int(vm.vcpus),
+                "vcpus": 0 if vm.vcpus is None else int(vm.vcpus),
                 "memory": vm.memory,
                 "disk": vm.disk,
-                "tags": [{"name": tag.name} for tag in vm.tags.all()],
+                # "tags": [{"name": tag.name} for tag in vm.tags.all()],
                 "custom_fields": {"vmid": vm.cf["vmid"]},
             } for vm in delete],
         })
@@ -186,6 +190,7 @@ class NetBoxUpdater:
             vmi_entry.save()
         for vmi in delete:
             vmi.delete()
+        delete.extend(self.cascade_deleted_vminterfaces)
 
         return json.dumps({
             'create': create,
