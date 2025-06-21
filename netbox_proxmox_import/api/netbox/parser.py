@@ -4,8 +4,8 @@ import re
 class NetBoxParser:
 
 
-    def __init__(self, connection):
-        self.connection = connection
+    def __init__(self, proxmox_connection):
+        self.connection = proxmox_connection
         self.default_tag_color = "d1d1d1"
 
 
@@ -33,6 +33,8 @@ class NetBoxParser:
         nb_vm = {
             "name": px_vm["name"],
             "status": vm_status,
+            # Note: will not set the node for the VM if the node itself
+            # is not assigned to the virtualization cluster of the VM
             "device": {"name": px_vm["node"]},
             "cluster": self.connection.cluster.id,
             "vcpus": int(px_vm["sockets"]) * int(px_vm["cores"]),
@@ -40,7 +42,6 @@ class NetBoxParser:
             # "role": self.connection.vm_role_id or None,
             "disk": int(px_vm["maxdisk"] / 2 ** 20),  # B -> MB
             "tags": [{"name": tag} for tag in px_vm["tags"]],
-            # TODO: add custom field with plugin (or does it have to be done manually?)
             "custom_fields": {"vmid": px_vm["vmid"]},
         }
         return nb_vm
@@ -50,7 +51,6 @@ class NetBoxParser:
         for px_interface in px_interface_list:
             mac, vlanid = self._extract_mac_vlan(px_interface["info"])
             interface = {
-                # FIXME: VM name is possibly not unique (map back to id after create or update)
                 "name": px_interface["name"],
                 "virtual_machine": {"name": px_interface["vm"]},
                 # FIXME: v4.2 breaks mac_address field

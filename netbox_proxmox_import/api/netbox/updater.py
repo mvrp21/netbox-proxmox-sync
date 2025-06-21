@@ -1,20 +1,23 @@
 import json
 from django.core.serializers import serialize
 from extras.models import Tag
-from virtualization.models import VirtualMachine
 from dcim.models import Device
+from virtualization.models import VirtualMachine
 from django.forms.models import model_to_dict
 
 
 class NetBoxUpdater:
     def __init__(self, proxmox_connection):
         self.connection = proxmox_connection
-        self.devices = Device.objects.filter(cluster=proxmox_connection.cluster.id)
+        self.devices_by_name = {}
+        for device in Device.objects.filter(cluster=proxmox_connection.cluster.id):
+            self.devices_by_name[device.name] = device
+        self.tags_by_name = {}
 
     def _vms_equal(self, px_vm, nb_vm):
-        if nb_vm.device is None:
+        if nb_vm.device is None and self.devices_by_name.get(px_vm["device"]["name"]) is not None:
             return False
-        if px_vm["device"]["name"] != nb_vm.device.name:
+        if nb_vm.device is not None and px_vm["device"]["name"] != nb_vm.device.name:
             return False
         if px_vm["status"] != nb_vm.status:
             return False
@@ -24,6 +27,7 @@ class NetBoxUpdater:
             return False
         if px_vm["disk"] != nb_vm.disk:
             return False
+        # TODO: detect tags were changed
         return True
 
     def update_tags(self, parsed_tags):
@@ -37,6 +41,8 @@ class NetBoxUpdater:
             unique_fields=["slug"],
             update_fields=["name", "color"],
         )
+        for tag in tags:
+            self.tags_by_name[tag.name] = tag
         return serialize("json", tags)
         # TODO: remove the missing ones??
         # How to know which tags the plugin is managing?
@@ -77,16 +83,17 @@ class NetBoxUpdater:
                 "vcpus": int(vm_entry.vcpus),
                 "memory": vm_entry.memory,
                 "disk": vm_entry.disk,
-                # "tags": [{"name": tag.name} for tag in vm_entry.tags],
+                "tags": [{"name": tag.name} for tag in vm_entry.tags.all()],
                 "custom_fields": {"vmid": vm_entry.cf["vmid"]},
             }
             vm_entry.status = vm["after"]["status"]
-            # vm_entry.device = vm["after"]["device"]
+            vm_entry.device = self.devices_by_name.get(vm["after"]["device"]["name"])
             vm_entry.vcpus = vm["after"]["vcpus"]
             vm_entry.memory = vm["after"]["memory"]
             vm_entry.disk = vm["after"]["disk"]
             vm_entry.custom_field_data["vmid"] = vm["after"]["custom_fields"]["vmid"]
-            # vm_entry.tags = vm["after"]["tags"]
+            # this "self.tags_by_name" does imply having to call update_tags() first
+            vm_entry.tags.set([self.tags_by_name.get(tag["name"]) for tag in vm["after"]["tags"]])
             vm_entry.save()
         for vm in delete:
             vm.delete()
