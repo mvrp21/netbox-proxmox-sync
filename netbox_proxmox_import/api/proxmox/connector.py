@@ -59,4 +59,5 @@ class Proxmox:
     def get_vminterfaces(self):
         if len(self.vminterfaces) == 0:
             self.get_vms()
+        # TODO: **probably** gotta sort to keep net<N> names consistent (maybe?? check it)
         return self.vminterfaces

@@ -2,8 +2,7 @@ import json
 from django.core.serializers import serialize
 from extras.models import Tag
 from dcim.models import Device
-from virtualization.models import VirtualMachine
-from django.forms.models import model_to_dict
+from virtualization.models import VirtualMachine, VMInterface
 
 
 class NetBoxUpdater:
@@ -13,6 +12,7 @@ class NetBoxUpdater:
         for device in Device.objects.filter(cluster=proxmox_connection.cluster.id):
             self.devices_by_name[device.name] = device
         self.tags_by_name = {}
+        self.vms_by_name = {}
 
     def _vms_equal(self, px_vm, nb_vm):
         if nb_vm.device is None and self.devices_by_name.get(px_vm["device"]["name"]) is not None:
@@ -47,9 +47,12 @@ class NetBoxUpdater:
         # TODO: remove the missing ones??
         # How to know which tags the plugin is managing?
 
+    # TODO: error handling
     def update_vms(self, parsed_vms):
         existing_vms = VirtualMachine.objects.filter(cluster=self.connection.cluster)
         existing_vms_by_name = {vm.name: vm for vm in existing_vms}
+        for name in existing_vms_by_name:
+            self.vms_by_name[name] = existing_vms_by_name[name]
 
         create = []
         update = []
@@ -72,7 +75,19 @@ class NetBoxUpdater:
         # NetBox doesn't use bulk_create, so we won't either
         # Django's bulk methods behave weirdly anyways
         for vm in create:
-            VirtualMachine.objects.create(*vm)
+            self.vms_by_name[vm["name"]] = VirtualMachine.objects.create(
+                name=vm["name"],
+                status=vm["status"],
+                device=self.devices_by_name.get(vm["device"]["name"]),
+                cluster=self.connection.cluster,
+                vcpus=vm["vcpus"],
+                memory=vm["memory"],
+                disk=vm["disk"],
+                # this "self.tags_by_name" does imply having to call update_tags() first
+                # tags=[self.tags_by_name.get(tag["name"]) for tag in vm["tags"]],
+                custom_field_data=vm["custom_fields"],
+            )
+            self.vms_by_name[vm["name"]].tags.set([self.tags_by_name.get(tag["name"]) for tag in vm["tags"]])
         for vm in update:
             vm_entry = vm["before"]
             vm["before"] = {
@@ -95,11 +110,90 @@ class NetBoxUpdater:
             # this "self.tags_by_name" does imply having to call update_tags() first
             vm_entry.tags.set([self.tags_by_name.get(tag["name"]) for tag in vm["after"]["tags"]])
             vm_entry.save()
+            self.vms_by_name[vm_entry.name] = vm_entry
         for vm in delete:
             vm.delete()
 
         return json.dumps({
             'create': create,
             'update': update,
-            'delete': delete,
+            'delete': [{
+                "name": vm.name,
+                "status": vm.status,
+                "device": None if vm.device is None else {"name": vm.device.name},
+                "cluster": vm.cluster.id,
+                "vcpus": int(vm.vcpus),
+                "memory": vm.memory,
+                "disk": vm.disk,
+                "tags": [{"name": tag.name} for tag in vm.tags.all()],
+                "custom_fields": {"vmid": vm.cf["vmid"]},
+            } for vm in delete],
+        })
+    def _vminterfaces_equal(self, px_vmi, nb_vmi):
+        if px_vmi["name"] != nb_vmi.name:
+            return False
+        if str(px_vmi["mac_address"]).lower() != str(nb_vmi.mac_address).lower():
+            return False
+        # TODO: detect vlan change
+        return True
+
+    def update_vminterfaces(self, parsed_vminterfaces):
+        vms = [self.vms_by_name[name] for name in self.vms_by_name]
+        existing_vminterfaces = VMInterface.objects.filter(virtual_machine__in=vms)
+        existing_vminterfaces_by_name = {vmi.name: vmi for vmi in existing_vminterfaces}
+
+        create = []
+        update = []
+        delete = []
+
+        for px_vmi in parsed_vminterfaces:
+            if px_vmi["name"] not in existing_vminterfaces_by_name:
+                create.append(px_vmi)
+            else:
+                nb_vmi = existing_vminterfaces_by_name[px_vmi["name"]]
+                if not self._vminterfaces_equal(px_vmi, nb_vmi):
+                    update.append({"before": nb_vmi, "after": px_vmi})
+
+        existing_vminterfaces_set = set(existing_vminterfaces_by_name.keys())
+        parsed_vminterfaces_set = set(vmi['name'] for vmi in parsed_vminterfaces)
+        deleted_vminterfaces_set = existing_vminterfaces_set - parsed_vminterfaces_set
+        for vmi_name in deleted_vminterfaces_set:
+            delete.append(existing_vminterfaces_by_name[vmi_name])
+
+        # NetBox doesn't use bulk_create, so we won't either
+        # Django's bulk methods behave weirdly anyways
+        for vmi in create:
+            VMInterface.objects.create(
+                name=vmi["name"],
+                mac_address=vmi["mac_address"],
+                virtual_machine=self.vms_by_name.get(vmi["virtual_machine"]["name"]),
+                mode=vmi["mode"],
+            )
+        for vmi in update:
+            vmi_entry = vmi["before"]
+            vmi["before"] = {
+                "name": vmi_entry.name,
+                "virtual_machine": {"name": vmi_entry.virtual_machine.name},
+                "mac_address": str(vmi_entry.mac_address),
+                "mode": vmi_entry.mode,
+                # "untagged_vlan": vmi_entry.vlan,
+            }
+            # this "self.vms_by_name" does imply having to call update_vms() first
+            vmi_entry.virtual_machine = self.vms_by_name.get(vmi["after"]["virtual_machine"]["name"])
+            vmi_entry.mac_address = vmi["after"]["mac_address"]
+            vmi_entry.mode = vmi["after"]["mode"]
+            # vmi_entry.vlan = vmi["after"]["vlan"]
+            vmi_entry.save()
+        for vmi in delete:
+            vmi.delete()
+
+        return json.dumps({
+            'create': create,
+            'update': update,
+            'delete': [{
+                "name": vmi.name,
+                "virtual_machine": {"name": vmi.virtual_machine.name},
+                "mac_address": str(vmi.mac_address),
+                "mode": "access",
+            } for vmi in delete],
         })

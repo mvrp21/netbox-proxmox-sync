@@ -64,5 +64,5 @@ def update_netbox(connection, parsed_data):
     return {
         'tags': json.loads(nb.update_tags(parsed_data['tags'])),
         'vms': json.loads(nb.update_vms(parsed_data['vms'])),
-        # 'vminterfaces': nb.update_vminterfaces(parsed_data['vminterfaces']),
+        'vminterfaces': json.loads(nb.update_vminterfaces(parsed_data['vminterfaces'])),
     }

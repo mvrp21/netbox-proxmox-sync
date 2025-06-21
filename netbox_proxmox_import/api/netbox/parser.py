@@ -36,7 +36,7 @@ class NetBoxParser:
             # Note: will not set the node for the VM if the node itself
             # is not assigned to the virtualization cluster of the VM
             "device": {"name": px_vm["node"]},
-            "cluster": self.connection.cluster.id,
+            "cluster": {"name": self.connection.cluster.name},
             "vcpus": int(px_vm["sockets"]) * int(px_vm["cores"]),
             "memory": int(px_vm["memory"]),
             # "role": self.connection.vm_role_id or None,
