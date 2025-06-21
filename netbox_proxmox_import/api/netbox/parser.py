@@ -3,28 +3,17 @@ import re
 
 class NetBoxParser:
 
-    # FIXME: this comes from the old idea, we're now creating the cluster first and THEN syncing it
-    INFO = {
-        "tag_color": "d1d1d1",
-        "cluster_name": "Proxmox C3SL",
-        "cluster_type": "Proxmox",
-        "cluster_description": "Production Proxmox Cluster",
-        "vm_role": "Virtual Machine",
-    }
 
-    def __init__(self, remaps={}):
-        for key in remaps:
-            if key not in self.INFO:
-                raise Exception(
-                    f"Invalid key mapping ({key}). Supported keys are: {self.INFO.keys()}"
-                )
-            self.INFO[key] = remaps[key]
+    def __init__(self, connection):
+        self.connection = connection
+        self.default_tag_color = "d1d1d1"
+
 
     def parse_tags(self, px_tags):
         nb_tags = []
         for name, color in px_tags.items():
             tag_slug = name.lower().replace(" ", "-").replace(".", "_")
-            tag_color = self.INFO["tag_color"] if color is None else color
+            tag_color = self.default_tag_color if color is None else color
             nb_tags.append({
                 "name": name,
                 "slug": tag_slug,
@@ -45,10 +34,10 @@ class NetBoxParser:
             "name": px_vm["name"],
             "status": vm_status,
             "device": {"name": px_vm["node"]},
-            "cluster": {"name": self.INFO["cluster_name"]},
-            "vcpus": px_vm["sockets"] * px_vm["cores"],
-            "memory": px_vm["memory"],
-            "role": {"name": self.INFO["vm_role"]},
+            "cluster": self.connection.cluster.id,
+            "vcpus": int(px_vm["sockets"]) * int(px_vm["cores"]),
+            "memory": int(px_vm["memory"]),
+            # "role": self.connection.vm_role_id or None,
             "disk": int(px_vm["maxdisk"] / 2 ** 20),  # B -> MB
             "tags": [{"name": tag} for tag in px_vm["tags"]],
             # TODO: add custom field with plugin (or does it have to be done manually?)
@@ -61,7 +50,7 @@ class NetBoxParser:
         for px_interface in px_interface_list:
             mac, vlanid = self._extract_mac_vlan(px_interface["info"])
             interface = {
-                # FIXME: VM name is possibly not unique
+                # FIXME: VM name is possibly not unique (map back to id after create or update)
                 "name": px_interface["name"],
                 "virtual_machine": {"name": px_interface["vm"]},
                 # FIXME: v4.2 breaks mac_address field
@@ -72,7 +61,8 @@ class NetBoxParser:
             nb_vminterfaces.append(interface)
         return nb_vminterfaces
 
-    # TODO: allow custom VLAN extraction
+    # TODO: allow custom VLAN extraction based on the interface's name
+    # current pattern: "vmbr<VLAN_ID>"
     def _extract_mac_vlan(self, net_string):
         mac_match = re.search(r"([0-9A-Fa-f:]{17})", net_string)
         vlan_match = re.search(r"vmbr(\d+)", net_string)
