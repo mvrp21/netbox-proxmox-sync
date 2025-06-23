@@ -54,9 +54,9 @@ class NetBoxParser:
                 "name": px_interface["name"],
                 "virtual_machine": {"name": px_interface["vm"]},
                 # FIXME: v4.2 breaks mac_address field
-                "mac_address": mac,
+                "mac_address": mac.upper(),
                 "mode": "access",
-                "untagged_vlan": {"vid": vlanid},
+                "untagged_vlan": {"vid": int(vlanid)},
             }
             nb_vminterfaces.append(interface)
         return nb_vminterfaces

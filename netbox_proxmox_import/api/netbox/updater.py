@@ -3,7 +3,9 @@ from django.core.serializers import serialize
 from extras.models import Tag
 from dcim.models import Device
 from virtualization.models import VirtualMachine, VMInterface
+from ipam.models import VLAN
 
+# TODO: return errors and/or warnings on things such as: device not found, vlan not found, etc.
 
 class NetBoxUpdater:
     def __init__(self, proxmox_connection):
@@ -14,6 +16,8 @@ class NetBoxUpdater:
         self.tags_by_name = {}
         self.vms_by_name = {}
         self.cascade_deleted_vminterfaces = []
+        vlans = VLAN.objects.all()
+        self.vlans_by_vid = {vlan.vid: vlan for vlan in vlans}
 
     def _vms_equal(self, px_vm, nb_vm):
         if nb_vm.device is None and self.devices_by_name.get(px_vm["device"]["name"]) is not None:
@@ -28,7 +32,10 @@ class NetBoxUpdater:
             return False
         if px_vm["disk"] != nb_vm.disk:
             return False
-        # TODO: detect tags were changed
+        px_tags = set([tag["name"] for tag in px_vm["tags"]])
+        nb_tags = set([tag.name for tag in nb_vm.tags.all()])
+        if px_tags != nb_tags:
+            return False
         return True
 
     def update_tags(self, parsed_tags):
@@ -136,9 +143,14 @@ class NetBoxUpdater:
     def _vminterfaces_equal(self, px_vmi, nb_vmi):
         if px_vmi["name"] != nb_vmi.name:
             return False
-        if str(px_vmi["mac_address"]).lower() != str(nb_vmi.mac_address).lower():
+        if str(px_vmi["mac_address"]).upper() != str(nb_vmi.mac_address).upper():
             return False
-        # TODO: detect vlan change
+        if nb_vmi.untagged_vlan is None and px_vmi is not None:
+            return False
+        if nb_vmi.untagged_vlan is not None and \
+                self.vlans_by_vid.get(px_vmi["untagged_vlan"]["vid"]) is not None and\
+                int(px_vmi["untagged_vlan"]["vid"]) != int(nb_vmi.untagged_vlan.vid):
+            return False
         return True
 
     def update_vminterfaces(self, parsed_vminterfaces):
@@ -172,6 +184,7 @@ class NetBoxUpdater:
                 mac_address=vmi["mac_address"],
                 virtual_machine=self.vms_by_name.get(vmi["virtual_machine"]["name"]),
                 mode=vmi["mode"],
+                untagged_vlan=self.vlans_by_vid.get(vmi["untagged_vlan"]["vid"])
             )
         for vmi in update:
             vmi_entry = vmi["before"]
@@ -180,13 +193,13 @@ class NetBoxUpdater:
                 "virtual_machine": {"name": vmi_entry.virtual_machine.name},
                 "mac_address": str(vmi_entry.mac_address),
                 "mode": vmi_entry.mode,
-                # "untagged_vlan": vmi_entry.vlan,
+                "untagged_vlan": None if vmi_entry.untagged_vlan is None else {"vid": vmi_entry.untagged_vlan.vid},
             }
             # this "self.vms_by_name" does imply having to call update_vms() first
             vmi_entry.virtual_machine = self.vms_by_name.get(vmi["after"]["virtual_machine"]["name"])
             vmi_entry.mac_address = vmi["after"]["mac_address"]
             vmi_entry.mode = vmi["after"]["mode"]
-            # vmi_entry.vlan = vmi["after"]["vlan"]
+            vmi_entry.vlan = self.vlans_by_vid.get(vmi["after"]["untagged_vlan"]["vid"])
             vmi_entry.save()
         for vmi in delete:
             vmi.delete()
@@ -200,5 +213,6 @@ class NetBoxUpdater:
                 "virtual_machine": {"name": vmi.virtual_machine.name},
                 "mac_address": str(vmi.mac_address),
                 "mode": "access",
+                "untagged_vlan": None if vmi.untagged_vlan is None else {"vid": vmi.untagged_vlan.vid},
             } for vmi in delete],
         })
