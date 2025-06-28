@@ -27,14 +27,12 @@ class Proxmox:
         return tags
 
     def get_cluster(self):
-        # TODO: support multiple proxmox clusters
         return self.proxmox.cluster.status.get()[0]
 
     def get_vms(self):
         vm_resources = self.proxmox.cluster.resources.get(type="vm")
         vms = []
         for vm in vm_resources:
-            # TODO: allow vm ignore list
             vm_config = self.proxmox.nodes(vm['node']).qemu(vm['vmid']).config.get()
             self._add_vminterfaces(vm_config)
             # Store some status info for later
@@ -59,5 +57,4 @@ class Proxmox:
     def get_vminterfaces(self):
         if len(self.vminterfaces) == 0:
             self.get_vms()
-        # TODO: **probably** gotta sort to keep net<N> names consistent (maybe?? check it)
         return self.vminterfaces

@@ -45,7 +45,6 @@ def sync_cluster(connection_id):
 
 
 def get_proxmox_data(proxmox_connection):
-    # TODO: connection error handling here
     px = Proxmox({
         "host": proxmox_connection.domain,
         "port": proxmox_connection.port,

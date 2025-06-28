@@ -61,8 +61,6 @@ class NetBoxParser:
             nb_vminterfaces.append(interface)
         return nb_vminterfaces
 
-    # TODO: allow custom VLAN extraction based on the interface's name
-    # current pattern: "vmbr<VLAN_ID>"
     def _extract_mac_vlan(self, net_string):
         mac_match = re.search(r"([0-9A-Fa-f:]{17})", net_string)
         vlan_match = re.search(r"vmbr(\d+)", net_string)

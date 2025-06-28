@@ -60,7 +60,6 @@ class NetBoxUpdater:
         for vm in update:
             vm_entry = vm["before"]
             # We need to translate the before (a NetBox Model) into something JSON serializable
-            # TODO: unify all serialization code (half's i NetBoxParser, the other half is spread here)
             vm["before"] = {
                     "name": vm_entry.name,
                     "status": vm_entry.status,

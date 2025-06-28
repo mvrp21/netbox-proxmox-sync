@@ -1,5 +1,5 @@
 {% block header %}
-  <h1>My Custom Header</h1>
+  <h1>Synchronize Promox!</h1>
 {% endblock header %}
 
 {% block content %}
@@ -20,12 +20,9 @@ OBJECT ID: {{ object.id }}
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrftoken
                 },
-                // body: JSON.stringify({ connection_id: '{{ object.id }}' })
-                // TODO: render table with output
-                //       (created|updated|deleted objects)
             })
             .then(response => response.json())
-            .then(data => alert('Action Executed: ' + data.status))
+            .then(data => console.log(data))
             .catch(error => {
                 console.error('Error:', error);
                 alert('Error executing action');

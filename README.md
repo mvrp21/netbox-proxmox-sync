@@ -2,8 +2,6 @@
 
 This is a NetBox plugin that fetches information from a Proxmox server and imports it into NetBox. It simply imports the data over nicely.
 
-> TODO: images
-
 ## Features
 
 - Imports virtual machines from Proxmox into NetBox.
