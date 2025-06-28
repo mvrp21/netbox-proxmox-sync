@@ -5,8 +5,6 @@ from dcim.models import Device
 from virtualization.models import VirtualMachine, VMInterface
 from ipam.models import VLAN
 
-# TODO: return errors and/or warnings on things such as: device not found, vlan not found, etc.
-
 class NetBoxUpdater:
     def __init__(self, proxmox_connection):
         self.connection = proxmox_connection
@@ -82,11 +80,17 @@ class NetBoxUpdater:
             vm_entry.disk = vm["after"]["disk"]
             vm_entry.custom_field_data["vmid"] = vm["after"]["custom_fields"]["vmid"]
             # this "self.tags_by_name" does imply having to call update_tags() first
-            vm_entry.tags.set([self.tags_by_name.get(tag["name"]) for tag in vm["after"]["tags"]])
-            vm_entry.save()
-            self.vms_by_name[vm_entry.name] = vm_entry
+            try:
+                vm_entry.tags.set([self.tags_by_name.get(tag["name"]) for tag in vm["after"]["tags"]])
+                vm_entry.save()
+                self.vms_by_name[vm_entry.name] = vm_entry
+            except Exception as e:
+                errors.append(e)
         for vm in delete:
-            vm.delete()
+            try:
+                vm.delete()
+            except Exception as e:
+                errors.append(e)
 
         return json.dumps({
             "create": create,
