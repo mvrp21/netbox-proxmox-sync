@@ -13,6 +13,7 @@ class NetBoxParser:
         nb_tags = []
         for name, color in px_tags.items():
             tag_slug = name.lower().replace(" ", "-").replace(".", "_")
+            tag_slug = f"px_{self.connection.id}__{tag_slug}"
             tag_color = self.default_tag_color if color is None else color
             nb_tags.append({
                 "name": name,

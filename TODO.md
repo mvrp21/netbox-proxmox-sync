@@ -1,5 +1,5 @@
 # ToDo
-1. [ ] Improve error handling (proxmox fetch & netbox update)
+1. [ ] Improve error handling (good enough)
 2. [ ] Render JSON output from API call in the template
 3. [ ] Turn Proxmox Token into secret usin `netbox-secrets`
 4. [ ] SyncNodes option

@@ -81,7 +81,7 @@ def categorize_operations(connection, parsed_data):
 def update_netbox(connection, categorized_data):
     nb = NetBoxUpdater(connection)
     return {
-        "tags": json.loads(nb.update_tags(categorized_data["tags"])),
-        "vms": json.loads(nb.update_vms(categorized_data["vms"])),
-        "vminterfaces": json.loads(nb.update_vminterfaces(categorized_data["vminterfaces"])),
+        "tags": nb.update_tags(categorized_data["tags"]),
+        "vms": nb.update_vms(categorized_data["vms"]),
+        "vminterfaces": nb.update_vminterfaces(categorized_data["vminterfaces"]),
     }

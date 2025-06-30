@@ -1,17 +1,19 @@
 {% block header %}
-  <h1>Synchronize Promox!</h1>
+  <h1>Synchronize Proxmox!</h1>
 {% endblock header %}
 
 {% block content %}
 
-<button id="execute-action" class="btn btn-danger p-3 rounded">Execute Action</button>
+<button id="sync-proxmox-cluster" class="btn btn-success p-3 rounded">
+    Synchronize Proxmox!
+</button>
 
-OBJECT ID: {{ object.id }}
+<div id="result-container" class="mt-4"></div>
 
 <script>
     const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
     document.addEventListener("DOMContentLoaded", function() {
-        const button = document.getElementById('execute-action');
+        const button = document.getElementById('sync-proxmox-cluster');
         button.addEventListener('click', function() {
             const connection_id = {{ object.id }};
             fetch(`/api/plugins/nbp-sync/sync/${connection_id}`, {
@@ -21,13 +23,105 @@ OBJECT ID: {{ object.id }}
                     'X-CSRFToken': csrftoken
                 },
             })
-            .then(response => response.json())
-            .then(data => console.log(data))
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Error executing action');
-            });
+            .then((response) => response.json())
+            .then((data) => {
+                console.log(data);
+                renderResults(data);
+            })
+            .catch((error) => console.error('Error:', error));
         });
     });
+
+    function renderResults(returnData) {
+        const data = returnData.data;
+        const resultContainer = document.getElementById('result-container');
+        resultContainer.innerHTML = `<h3>Elapsed: ${returnData.elapsed} seconds</h3>`;
+
+        // FIXME: better option is some sort of tabbing for these tables
+        if (data.tags) {
+            if (data.tags.created.length > 0)
+                resultContainer.appendChild(createTable("Tags", data.tags.created));
+            if (data.tags.updated.length > 0)
+                resultContainer.appendChild(updateTable("Tags", data.tags.updated));
+            if (data.tags.deleted.length > 0)
+                resultContainer.appendChild(deleteTable("Tags", data.tags.deleted));
+            for (const warn of data.tags.warnings) {
+                const alertMsg = document.createElement('div');
+                alertMsg.className = 'alert alert-warning'
+                alertMsg.innerText = warn;
+                resultContainer.appendChild(alertMsg);
+            }
+            for (const err of data.tags.errors) {
+                const alertMsg = document.createElement('div');
+                alertMsg.className = 'alert alert-danger'
+                alertMsg.innerText = err;
+                resultContainer.appendChild(alertMsg);
+            }
+        }
+        if (data.vms) {
+            if (data.vms.created.length > 0)
+                resultContainer.appendChild(createTable("VMs", data.vms.created));
+            if (data.vms.updated.length > 0)
+                resultContainer.appendChild(updateTable("VMs", data.vms.updated));
+            if (data.vms.deleted.length > 0)
+                resultContainer.appendChild(deleteTable("VMs", data.vms.deleted));
+            for (const warn of data.vms.warnings) {
+                const alertMsg = document.createElement('div');
+                alertMsg.className = 'alert alert-warning'
+                alertMsg.innerText = warn;
+                resultContainer.appendChild(alertMsg);
+            }
+            for (const err of data.vms.errors) {
+                const alertMsg = document.createElement('div');
+                alertMsg.className = 'alert alert-danger'
+                alertMsg.innerText = err;
+                resultContainer.appendChild(alertMsg);
+            }
+        }
+        // ... vminterfaces... etc etc etc
+    }
+
+    function createTable(title, items) {
+        const table = document.createElement('table');
+        table.className = 'table table-bordered mt-3';
+
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        const headerCell = document.createElement('th');
+        headerCell.textContent = title;
+        headerRow.appendChild(headerCell);
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        items.forEach(item => {
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
+            cell.textContent = JSON.stringify(item);
+            row.appendChild(cell);
+            tbody.appendChild(row);
+        });
+        table.appendChild(tbody);
+
+        return table;
+    }
+
+    function createList(title, items) {
+        const listContainer = document.createElement('div');
+        const titleElement = document.createElement('h5');
+        titleElement.textContent = title;
+        listContainer.appendChild(titleElement);
+
+        const list = document.createElement('ul');
+        items.forEach(item => {
+            const listItem = document.createElement('li');
+            listItem.textContent = item;
+            list.appendChild(listItem);
+        });
+        listContainer.appendChild(list);
+
+        return listContainer;
+    }
 </script>
+
 {% endblock content %}
