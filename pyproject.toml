@@ -16,5 +16,8 @@ dependencies = ["proxmoxer"]
 "Homepage" = "https://github.com/mvrp21/netbox-proxmox-sync"
 "Repository" = "https://github.com/mvrp21/netbox-proxmox-sync"
 
+[tool.setuptools.packages.find]
+exclude = ["images*"]
+
 [tool.setuptools.package-data]
 "netbox_proxmox_import" = ["templates/**/*.html"]
