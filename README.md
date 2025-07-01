@@ -27,9 +27,17 @@ cd /opt/netbox
 sudo ./venv/bin/python3 netbox/manage.py makemigrations netbox_proxmox_import
 sudo ./venv/bin/python3 netbox/manage.py migrate
 ```
-2. Apply migrations:
+
+2. Add the plugin to the `PLUGINS` netbox configuration:
+
+```python
+PLUGINS = ['netbox_proxmox_import']
+```
+
+3. Restart NetBox and apply migrations:
 
 ```bash
+sudo systemctl restart netbox
 cd /opt/netbox
 sudo ./venv/bin/python3 netbox/manage.py migrate netbox_proxmox_import
 ```
