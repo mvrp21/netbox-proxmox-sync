@@ -1,6 +1,6 @@
 version: 0.1
 package_name: netbox-proxmox-import
 compatibility:
-  - release: 0.5.0
+  - release: 1.0.0
     netbox_min: 4.1.0
     netbox_max: 4.1.11
