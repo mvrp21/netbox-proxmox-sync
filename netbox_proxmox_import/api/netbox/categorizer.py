@@ -112,6 +112,8 @@ class NetBoxCategorizer:
             return False
         if px_vm["disk"] != nb_vm.disk:
             return False
+        if px_vm["custom_fields"]["vmid"] != nb_vm.custom_field_data["vmid"]:
+            return False
         nb_tags = set([tag.name for tag in nb_vm.tags.all()])
         for px_tag in px_vm["tags"]:
             if px_tag["name"] not in nb_tags and tags_by_name.get(px_tag["name"]) is not None:

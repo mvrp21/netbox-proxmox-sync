@@ -28,7 +28,7 @@ class NetBoxUpdater:
                     color=tag["color"],
                     # object_types=[vm_contenttype]
                 )
-                new_tag.object_types.set([vm_contenttpe])
+                new_tag.object_types.set([vm_contenttype])
                 created.append(new_tag)
             except Exception as e:
                 errors.append(e)

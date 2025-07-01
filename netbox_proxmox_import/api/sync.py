@@ -20,12 +20,14 @@ def sync_cluster(connection_id):
     vm_contenttype = ContentType.objects.get(app_label="virtualization", model="virtualmachine")
     vmid, created = CustomField.objects.update_or_create(
         name="vmid",
-        label="[Proxmox] VM ID",
-        description="[Proxmox] VM ID",
-        filter_logic="exact",
-        type="integer",
-        # object_types=[vm_contenttype.id],
-        required=True,
+        defaults={
+            "label": "[Proxmox] VM ID",
+            "description": "[Proxmox] VM ID",
+            "filter_logic": "exact",
+            "type": "integer",
+            # "object_types": [vm_contenttype.id],
+            "required": True,
+        }
     )
     vmid.object_types.set([vm_contenttype.id])
 
