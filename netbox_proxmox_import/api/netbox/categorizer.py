@@ -58,6 +58,9 @@ class NetBoxCategorizer:
         existing_vms_by_name = {
             vm.name: vm for vm in VirtualMachine.objects.filter(cluster=self.connection.cluster)
         }
+        tags_by_name = {
+            t.name: t for t in Tag.objects.filter(slug__istartswith=f"px_{self.connection.id}__")
+        }
 
         create = []
         update = []
@@ -68,7 +71,7 @@ class NetBoxCategorizer:
                 create.append(px_vm)
                 continue
             nb_vm = existing_vms_by_name[px_vm["name"]]
-            if not self._vms_equal(px_vm, nb_vm, devices_by_name):
+            if not self._vms_equal(px_vm, nb_vm, devices_by_name, tags_by_name):
                 update.append({"before": nb_vm, "after": px_vm})
 
         existing_vms_set = set(existing_vms_by_name.keys())
@@ -84,7 +87,7 @@ class NetBoxCategorizer:
             "warnings": list(self.vm_warnings),
         }
 
-    def _vms_equal(self, px_vm, nb_vm, devices_by_name={}):
+    def _vms_equal(self, px_vm, nb_vm, devices_by_name={}, tags_by_name={}):
         if devices_by_name.get(px_vm["device"]["name"]) is None:
             self.vm_warnings.add(
                 f"Device '{px_vm['device']['name']}' in Cluster "
@@ -102,10 +105,10 @@ class NetBoxCategorizer:
             return False
         if px_vm["disk"] != nb_vm.disk:
             return False
-        px_tags = set([tag["name"] for tag in px_vm["tags"]])
         nb_tags = set([tag.name for tag in nb_vm.tags.all()])
-        if px_tags != nb_tags:
-            return False
+        for px_tag in px_vm["tags"]:
+            if px_tag["name"] not in nb_tags and tags_by_name.get(px_tag["name"]) is not None:
+                return False
         return True
 
     def categorize_vminterfaces(self, parsed_vminterfaces):
@@ -153,6 +156,8 @@ class NetBoxCategorizer:
         elif int(px_vmi["untagged_vlan"]["vid"]) != int(nb_vmi.untagged_vlan.vid):
             return False
         if px_vmi["name"] != nb_vmi.name:
+            return False
+        if px_vmi["virtual_machine"]["name"] != nb_vmi.virtual_machine.name:
             return False
         if str(px_vmi["mac_address"]).upper() != str(nb_vmi.mac_address).upper():
             return False

@@ -1,5 +1,7 @@
 import json
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.serializers import serialize
+from django.contrib.contenttypes.models import ContentType
 from extras.models import Tag
 from dcim.models import Device
 from virtualization.models import VirtualMachine, VMInterface
@@ -18,14 +20,15 @@ class NetBoxUpdater:
         deleted = []
 
         for tag in categorized_tags["create"]:
+            vm_contenttype = ContentType.objects.get(app_label="virtualization", model="virtualmachine")
             try:
                 new_tag = Tag.objects.create(
                     name=tag["name"],
                     slug=tag["slug"],
                     color=tag["color"],
-                    # object_types=["virtualization.virtualmachine"]
+                    # object_types=[vm_contenttype]
                 )
-                new_tag.object_types.set(["virtualization.virtualmachine"])
+                new_tag.object_types.set([vm_contenttpe])
                 created.append(new_tag)
             except Exception as e:
                 errors.append(e)
@@ -72,19 +75,18 @@ class NetBoxUpdater:
         for vm in categorized_vms["create"]:
             try:
                 new_vm = VirtualMachine.objects.create(
-                        name=vm["name"],
-                        status=vm["status"],
-                        device=devices_by_name.get(vm["device"]["name"]),
-                        cluster=self.connection.cluster,
-                        vcpus=vm["vcpus"],
-                        memory=vm["memory"],
-                        disk=vm["disk"],
-                        # tags=[tags_by_name.get(tag["name"]) for tag in vm["tags"]],
-                        custom_field_data=vm["custom_fields"],
-                        )
-                new_vm.tags.set([
-                    tags_by_name.get(tag["name"]) for tag in vm["tags"]
-                ])
+                    name=vm["name"],
+                    status=vm["status"],
+                    device=devices_by_name.get(vm["device"]["name"]),
+                    cluster=self.connection.cluster,
+                    vcpus=vm["vcpus"],
+                    memory=vm["memory"],
+                    disk=vm["disk"],
+                    # tags=[tags_by_name.get(tag["name"]) for tag in vm["tags"]],
+                    custom_field_data=vm["custom_fields"],
+                )
+                tags = [ tags_by_name.get(tag["name"]) for tag in vm["tags"] ]
+                new_vm.tags.set([ tag for tag in tags if tag is not None ])
                 new_vm.save()
                 created.append(new_vm)
             except Exception as e:
@@ -99,9 +101,8 @@ class NetBoxUpdater:
             updated_vm.custom_field_data["vmid"] = vm["after"]["custom_fields"]["vmid"]
             updated_vm.device = devices_by_name.get(vm["after"]["device"]["name"])
             try:
-                updated_vm.tags.set([
-                    tags_by_name.get(tag["name"]) for tag in vm["after"]["tags"]
-                ])
+                tags = [ tags_by_name.get(tag["name"]) for tag in vm["after"]["tags"] ]
+                updated_vm.tags.set([ tag for tag in tags if tag is not None ])
                 updated_vm.save()
                 updated.append(updated_vm)
             except Exception as e:
@@ -150,6 +151,7 @@ class NetBoxUpdater:
             updated_vmi.mac_address = vmi["after"]["mac_address"]
             updated_vmi.mode = vmi["after"]["mode"]
             updated_vmi.vlan = vlans_by_vid.get(vmi["after"]["untagged_vlan"]["vid"])
+            updated_vmi.virtual_machine = vms_by_name.get(vmi["after"]["virtual_machine"]["name"])
             try:
                 updated_vmi.save()
                 updated.append(updated_vmi)
@@ -159,6 +161,9 @@ class NetBoxUpdater:
         for vmi in categorized_vminterfaces["delete"]:
             try:
                 vmi.delete()
+                deleted.append(vmi)
+            except ObjectDoesNotExist:
+                # in case it was cascade-deleted by a VM deletion
                 deleted.append(vmi)
             except Exception as e:
                 errors.append(e)

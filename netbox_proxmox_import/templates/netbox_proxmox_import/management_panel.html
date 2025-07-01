@@ -1,120 +1,159 @@
 {% block header %}
-  <h1>Synchronize Proxmox!</h1>
+<button id="sync-proxmox-cluster" class="btn btn-success p-3 rounded h1">
+    Synchronize Proxmox Cluster!
+</button>
 {% endblock header %}
 
 {% block content %}
 
-<button id="sync-proxmox-cluster" class="btn btn-success p-3 rounded">
-    Synchronize Proxmox!
-</button>
-
-<div id="result-container" class="mt-4"></div>
+<div id="result-container" class="mt-4">
+    <ul class="nav nav-tabs justify-content-center" id="resultsTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="vms-tab" data-bs-toggle="tab" data-bs-target="#vms" type="button" role="tab" aria-controls="vms" aria-selected="true">VirtualMachines</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="vminterfaces-tab" data-bs-toggle="tab" data-bs-target="#vminterfaces" type="button" role="tab" aria-controls="vminterfaces" aria-selected="false">VMInterfaces</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tags-tab" data-bs-toggle="tab" data-bs-target="#tags" type="button" role="tab" aria-controls="tags" aria-selected="false">Tags</button>
+      </li>
+    </ul>
+    <div id="loading-spinner" class="text-center"></div>
+    <div class="tab-content text-center" id="resultsTabsContents">
+      <div class="tab-pane fade show active justify-content-center align-items-center" id="vms" role="tabpanel" aria-labelledby="vms-tab">Nothing to show :)</div>
+      <div class="tab-pane fade justify-content-center align-items-center" id="vminterfaces" role="tabpanel" aria-labelledby="vminterfaces-tab">Nothing to show :)</div>
+      <div class="tab-pane fade justify-content-center align-items-center" id="tags" role="tabpanel" aria-labelledby="tags-tab">Nothing to show :)</div>
+    </div>
+</div>
 
 <script>
     const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const spinner = document.getElementById('loading-spinner');
+    const containers = {
+        tags: document.getElementById('tags'),
+        vms: document.getElementById('vms'),
+        vminterfaces: document.getElementById('vminterfaces'),
+    };
     document.addEventListener("DOMContentLoaded", function() {
         const button = document.getElementById('sync-proxmox-cluster');
         button.addEventListener('click', function() {
+            spinner.innerHTML = '<div class="spinner-grow justify-content-center" style="height: 10rem; width: 10rem;" role="status"></div>';
+            for (const containerName of Object.keys(containers))
+                containers[containerName].innerHTML = "*Computer thinking noises...";
             const connection_id = {{ object.id }};
             fetch(`/api/plugins/nbp-sync/sync/${connection_id}`, {
-                method: 'POST',
+                method: "POST",
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrftoken
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrftoken,
                 },
             })
             .then((response) => response.json())
             .then((data) => {
+                spinner.innerHTML = "";
                 console.log(data);
                 renderResults(data);
             })
-            .catch((error) => console.error('Error:', error));
+            .catch((error) => {
+                console.error("Error:", error);
+                spinner.innerHTML = "";
+                for (const containerName of Object.keys(containers)) {
+                    containers[containerName].innerHTML = "Oh no bro... (Check the console too!)";
+                    const alertMsg = document.createElement("div");
+                    alertMsg.className = "alert alert-danger"
+                    alertMsg.innerText = error.message;
+                    containers[containerName].appendChild(alertMsg);
+                }
+            });
         });
     });
 
     function renderResults(returnData) {
         const data = returnData.data;
-        const resultContainer = document.getElementById('result-container');
-        resultContainer.innerHTML = `<h3>Elapsed: ${returnData.elapsed} seconds</h3>`;
-
-        // FIXME: better option is some sort of tabbing for these tables
-        if (data.tags) {
-            if (data.tags.created.length > 0)
-                resultContainer.appendChild(createTable("Tags", data.tags.created));
-            if (data.tags.updated.length > 0)
-                resultContainer.appendChild(updateTable("Tags", data.tags.updated));
-            if (data.tags.deleted.length > 0)
-                resultContainer.appendChild(deleteTable("Tags", data.tags.deleted));
-            for (const warn of data.tags.warnings) {
-                const alertMsg = document.createElement('div');
-                alertMsg.className = 'alert alert-warning'
-                alertMsg.innerText = warn;
-                resultContainer.appendChild(alertMsg);
-            }
-            for (const err of data.tags.errors) {
-                const alertMsg = document.createElement('div');
-                alertMsg.className = 'alert alert-danger'
-                alertMsg.innerText = err;
-                resultContainer.appendChild(alertMsg);
-            }
-        }
-        if (data.vms) {
-            if (data.vms.created.length > 0)
-                resultContainer.appendChild(createTable("VMs", data.vms.created));
-            if (data.vms.updated.length > 0)
-                resultContainer.appendChild(updateTable("VMs", data.vms.updated));
-            if (data.vms.deleted.length > 0)
-                resultContainer.appendChild(deleteTable("VMs", data.vms.deleted));
-            for (const warn of data.vms.warnings) {
-                const alertMsg = document.createElement('div');
-                alertMsg.className = 'alert alert-warning'
-                alertMsg.innerText = warn;
-                resultContainer.appendChild(alertMsg);
-            }
-            for (const err of data.vms.errors) {
-                const alertMsg = document.createElement('div');
-                alertMsg.className = 'alert alert-danger'
-                alertMsg.innerText = err;
-                resultContainer.appendChild(alertMsg);
+        const tableMap = {
+            tags: "Tags",
+            vms: "VMs",
+            vminterfaces: "VMInterfaces",
+        };
+        const fieldMap = {
+            tags: ["name", "color", "slug"],
+            vms: ["name", "device", "status", "vcpus", "memory", "disk"],
+            vminterfaces: ["name", "mac_address", "mode", "virtual_machine", "untagged_vlan"],
+        };
+        for (const key of Object.keys(tableMap)) {
+            containers[key].innerHTML = "";
+            if (data[key]) {
+                for (const err of data[key].errors) {
+                    const alertMsg = document.createElement("div");
+                    alertMsg.className = "alert alert-danger"
+                    alertMsg.innerText = err;
+                    containers[key].appendChild(alertMsg);
+                }
+                for (const warn of data[key].warnings) {
+                    const alertMsg = document.createElement("div");
+                    alertMsg.className = "alert alert-warning"
+                    alertMsg.innerText = warn;
+                    containers[key].appendChild(alertMsg);
+                }
+                if (data[key].created.length > 0)
+                    containers[key].appendChild(createTable(`Created ${tableMap[key]}`, data[key].created, fieldMap[key], "success"));
+                if (data[key].updated.length > 0)
+                    containers[key].appendChild(createTable(`Updated ${tableMap[key]}`, data[key].updated, fieldMap[key], "info"));
+                if (data[key].deleted.length > 0)
+                    containers[key].appendChild(createTable(`Deleted ${tableMap[key]}`, data[key].deleted, fieldMap[key], "danger"));
             }
         }
-        // ... vminterfaces... etc etc etc
+        for (const containerName of Object.keys(containers))
+            if (containers[containerName].children.length == 0)
+                containers[containerName].innerHTML = "Nothing to show :)";
     }
 
-    function createTable(title, items) {
-        const table = document.createElement('table');
-        table.className = 'table table-bordered mt-3';
+    function createTable(title, items, fields=[], bg="primary") {
+        const container = document.createElement("div");
+        container.innerHTML = `<h2>${title}</h2>`
+        const table = document.createElement("table");
+        table.className = `table table-bordered mt-3 bg-${bg}`;
+        container.appendChild(table);
 
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        const headerCell = document.createElement('th');
-        headerCell.textContent = title;
-        headerRow.appendChild(headerCell);
+        // Create table header
+        const thead = document.createElement("thead");
+        const headerRow = document.createElement("tr");
+
+        // Create header cells based on fields
+        fields.forEach(field => {
+            const headerCell = document.createElement("th");
+            headerCell.textContent = field;
+            headerRow.appendChild(headerCell);
+        });
         thead.appendChild(headerRow);
         table.appendChild(thead);
 
-        const tbody = document.createElement('tbody');
-        items.forEach(item => {
-            const row = document.createElement('tr');
-            const cell = document.createElement('td');
-            cell.textContent = JSON.stringify(item);
-            row.appendChild(cell);
+        // Create table body
+        const tbody = document.createElement("tbody");
+        items.forEach((item) => {
+            const row = document.createElement("tr");
+            fields.forEach((field) => {
+                const cell = document.createElement("td");
+                cell.textContent = item.fields[field] !== undefined ? item.fields[field] : "??";
+                row.appendChild(cell);
+            });
             tbody.appendChild(row);
         });
         table.appendChild(tbody);
 
-        return table;
+        return container;
     }
 
+
     function createList(title, items) {
-        const listContainer = document.createElement('div');
-        const titleElement = document.createElement('h5');
+        const listContainer = document.createElement("div");
+        const titleElement = document.createElement("h5");
         titleElement.textContent = title;
         listContainer.appendChild(titleElement);
 
-        const list = document.createElement('ul');
+        const list = document.createElement("ul");
         items.forEach(item => {
-            const listItem = document.createElement('li');
+            const listItem = document.createElement("li");
             listItem.textContent = item;
             list.appendChild(listItem);
         });
