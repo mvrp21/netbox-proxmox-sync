@@ -66,13 +66,20 @@ class NetBoxCategorizer:
         update = []
         delete = []
 
+        names_to_create = set()
+        names_to_update = set()
+
         for px_vm in parsed_vms:
             if px_vm["name"] not in existing_vms_by_name:
-                create.append(px_vm)
-                continue
+                if px_vm["name"] not in names_to_create:
+                    names_to_create.add(px_vm["name"])
+                    create.append(px_vm)
+                    continue
             nb_vm = existing_vms_by_name[px_vm["name"]]
             if not self._vms_equal(px_vm, nb_vm, devices_by_name, tags_by_name):
-                update.append({"before": nb_vm, "after": px_vm})
+                if px_vm["name"] not in names_to_update:
+                    names_to_update.add(px_vm["name"])
+                    update.append({"before": nb_vm, "after": px_vm})
 
         existing_vms_set = set(existing_vms_by_name.keys())
         parsed_vms_set = set(vm["name"] for vm in parsed_vms)
@@ -123,13 +130,22 @@ class NetBoxCategorizer:
         update = []
         delete = []
 
+        names_to_create = set()
+        names_to_update = set()
+
         for px_vmi in parsed_vminterfaces:
             if px_vmi["name"] not in existing_vminterfaces_by_name:
-                create.append(px_vmi)
-                continue
+                if px_vmi["name"] not in names_to_create:
+                    # Not sure why yet, but randomly proxmox sends me duplicated stuff
+                    # (maybe in between migrations it gets messed up?)
+                    names_to_create.add(px_vmi["name"])
+                    create.append(px_vmi)
+                    continue
             nb_vmi = existing_vminterfaces_by_name[px_vmi["name"]]
             if not self._vminterfaces_equal(px_vmi, nb_vmi, vlans_by_vid):
-                update.append({"before": nb_vmi, "after": px_vmi})
+                if px_vmi["name"] not in names_to_update:
+                    names_to_update.add(px_vmi["name"])
+                    update.append({"before": nb_vmi, "after": px_vmi})
 
         existing_vminterfaces_set = set(existing_vminterfaces_by_name.keys())
         parsed_vminterfaces_set = set(vmi["name"] for vmi in parsed_vminterfaces)

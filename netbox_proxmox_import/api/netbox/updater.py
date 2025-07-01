@@ -3,7 +3,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.serializers import serialize
 from django.contrib.contenttypes.models import ContentType
 from extras.models import Tag
-from dcim.models import Device
+from dcim.models import Device, MACAddress
 from virtualization.models import VirtualMachine, VMInterface
 from ipam.models import VLAN
 
@@ -38,8 +38,8 @@ class NetBoxUpdater:
             updated_tag.slug = tag["after"]["slug"]
             updated_tag.color = tag["after"]["color"]
             try:
-                updated_tag.object_types.set(["virtualization.virtualmachine"])
                 updated_tag.save()
+                updated_tag.object_types.set(["virtualization.virtualmachine"])
                 created.append(updated_tag)
             except Exception as e:
                 errors.append(e)
@@ -86,8 +86,8 @@ class NetBoxUpdater:
                     custom_field_data=vm["custom_fields"],
                 )
                 tags = [ tags_by_name.get(tag["name"]) for tag in vm["tags"] ]
-                new_vm.tags.set([ tag for tag in tags if tag is not None ])
                 new_vm.save()
+                new_vm.tags.set([ tag for tag in tags if tag is not None ])
                 created.append(new_vm)
             except Exception as e:
                 errors.append(e)
@@ -102,8 +102,8 @@ class NetBoxUpdater:
             updated_vm.device = devices_by_name.get(vm["after"]["device"]["name"])
             try:
                 tags = [ tags_by_name.get(tag["name"]) for tag in vm["after"]["tags"] ]
-                updated_vm.tags.set([ tag for tag in tags if tag is not None ])
                 updated_vm.save()
+                updated_vm.tags.set([ tag for tag in tags if tag is not None ])
                 updated.append(updated_vm)
             except Exception as e:
                 errors.append(e)
@@ -137,7 +137,8 @@ class NetBoxUpdater:
             try:
                 new_vmi = VMInterface.objects.create(
                     name=vmi["name"],
-                    mac_address=vmi["mac_address"],
+                    # mac_address=vmi["mac_address"],
+                    primary_mac_address=MACAddress.objects.update_or_create(mac_address=vmi["mac_address"])[0],
                     virtual_machine=vms_by_name.get(vmi["virtual_machine"]["name"]),
                     mode=vmi["mode"],
                     untagged_vlan=vlans_by_vid.get(vmi["untagged_vlan"]["vid"]),
@@ -148,7 +149,8 @@ class NetBoxUpdater:
         # ======================================================================================== #
         for vmi in categorized_vminterfaces["update"]:
             updated_vmi = vmi["before"]
-            updated_vmi.mac_address = vmi["after"]["mac_address"]
+            # updated_vmi.mac_address = vmi["after"]["mac_address"]
+            updated_vmi.primary_mac_address = MACAddress.objects.update_or_create(mac_address=vmi["after"]["mac_address"])[0]
             updated_vmi.mode = vmi["after"]["mode"]
             updated_vmi.vlan = vlans_by_vid.get(vmi["after"]["untagged_vlan"]["vid"])
             updated_vmi.virtual_machine = vms_by_name.get(vmi["after"]["virtual_machine"]["name"])
@@ -160,6 +162,7 @@ class NetBoxUpdater:
         # ======================================================================================== #
         for vmi in categorized_vminterfaces["delete"]:
             try:
+                # FIXME: Should we also delete the MACAddress?
                 vmi.delete()
                 deleted.append(vmi)
             except ObjectDoesNotExist:
@@ -175,3 +178,6 @@ class NetBoxUpdater:
             "errors": [str(e) for e in errors],
             "warnings": categorized_vminterfaces["warnings"],
         }
+
+    def create_mac_address(self, mac_address):
+        return new_mac

@@ -78,7 +78,7 @@
         const fieldMap = {
             tags: ["name", "color", "slug"],
             vms: ["name", "device", "status", "vcpus", "memory", "disk"],
-            vminterfaces: ["name", "mac_address", "mode", "virtual_machine", "untagged_vlan"],
+            vminterfaces: ["name", "primary_mac_address", "mode", "virtual_machine", "untagged_vlan"],
         };
         for (const key of Object.keys(tableMap)) {
             containers[key].innerHTML = "";
