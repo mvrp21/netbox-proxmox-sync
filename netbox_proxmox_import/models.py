@@ -24,12 +24,8 @@ class ProxmoxConnection(NetBoxModel):
 
     user = models.CharField(max_length=127)
 
-    # FIXME: as the name suggests, should be secret to the UI
     token_id = models.CharField(max_length=127)
     token_secret = models.CharField(max_length=127)
-
-
-    sync_nodes = models.BooleanField(default=False)
 
     cluster = models.ForeignKey(
         to='virtualization.cluster',

@@ -8,7 +8,7 @@ class ProxmoxConnectionSerializer(NetBoxModelSerializer):
     class Meta:
         model = ProxmoxConnection
         fields = (
-            'id', 'cluster', 'domain', 'verify_ssl', 'user', 'sync_nodes', 'port',
+            'id', 'cluster', 'domain', 'verify_ssl', 'user', 'port',
             'custom_fields', 'created', 'last_updated',
         )
         domain = serializers.HyperlinkedIdentityField(

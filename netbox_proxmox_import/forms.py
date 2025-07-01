@@ -6,4 +6,4 @@ class ProxmoxConnectionForm(NetBoxModelForm):
 
     class Meta:
         model = ProxmoxConnection
-        fields = ('domain', 'port', 'verify_ssl', 'user', 'token_id', 'token_secret', 'sync_nodes', 'cluster')
+        fields = ('domain', 'port', 'verify_ssl', 'user', 'token_id', 'token_secret', 'cluster')
