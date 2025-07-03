@@ -1,14 +1,37 @@
 {% block content %}
 
 <div id="result-container" class="mt-4">
-    <div id="loading-spinner" class="text-center"></div>
-    <div id="changelog"></div>
+    <ul class="nav nav-tabs justify-content-center" id="resultsTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="vms-tab" data-bs-toggle="tab" data-bs-target="#vms" type="button" role="tab" aria-controls="vms" aria-selected="true">VirtualMachines</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="vminterfaces-tab" data-bs-toggle="tab" data-bs-target="#vminterfaces" type="button" role="tab" aria-controls="vminterfaces" aria-selected="false">VMInterfaces</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="macs-tab" data-bs-toggle="tab" data-bs-target="#macs" type="button" role="tab" aria-controls="macs" aria-selected="false">MACs</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tags-tab" data-bs-toggle="tab" data-bs-target="#tags" type="button" role="tab" aria-controls="tags" aria-selected="false">Tags</button>
+      </li>
+    </ul>
+
+    <div class="tab-content text-center" id="resultsTabsContents">
+      <div class="tab-pane fade show active justify-content-center align-items-center" id="vms" role="tabpanel" aria-labelledby="vms-tab">Nothing to show :)</div>
+      <div class="tab-pane fade justify-content-center align-items-center" id="vminterfaces" role="tabpanel" aria-labelledby="vminterfaces-tab">Nothing to show :)</div>
+      <div class="tab-pane fade justify-content-center align-items-center" id="macs" role="tabpanel" aria-labelledby="macs-tab">Nothing to show :)</div>
+      <div class="tab-pane fade justify-content-center align-items-center" id="tags" role="tabpanel" aria-labelledby="tags-tab">Nothing to show :)</div>
+    </div>
 </div>
 
 <script>
     const csrftoken = document.querySelector("[name=csrfmiddlewaretoken]").value;
-    const spinner = document.getElementById("loading-spinner");
-    const changelog = document.getElementById("changelog");
+    const changelogs = {
+        VMs: document.getElementById("vms"),
+        VMInterfaces: document.getElementById("vminterfaces"),
+        MACs: document.getElementById("macs"),
+        Tags: document.getElementById("tags"),
+    };
 
     document.addEventListener("DOMContentLoaded", function() {
         const button = document.getElementById("sync-proxmox-cluster");
@@ -17,7 +40,8 @@
 
     function syncCluster() {
         const START = new Date();
-        spinner.innerHTML = '<div class="spinner-grow justify-content-center" style="height: 10rem; width: 10rem;" role="status"></div>';
+        for (const k in changelogs)
+            changelogs[k].innerHTML = '<div class="spinner-grow justify-content-center" style="height: 10rem; width: 10rem;" role="status"></div>';
         const connection_id = {{ object.id }};
         fetch(`/api/plugins/nbp-sync/sync/${connection_id}`, {
             method: "POST",
@@ -33,34 +57,47 @@
             const ISO_START = START.toISOString();
             const ISO_END = END.toISOString();
             const URL = window.location.origin;
-            const CHANGELOG_URL = `/core/changelog/?time_before=${ISO_END}&time_after=${ISO_START}&changed_object_type_id=90&changed_object_type_id=123&changed_object_type_id=124`;
-            renderMessages( CHANGELOG_URL );
-            return fetch(CHANGELOG_URL, { headers: {
-                "X-CSRFToken": csrftoken,
-                "Content-Type": "application/json",
-            }});
+            const changelogsToFetch = [
+                { id: 123, title: 'VMs', },
+                { id: 124, title: 'VMInterfaces', },
+                { id: 177, title: 'MACs', },
+                { id: 90, title: 'Tags', }
+            ];
+            const allChangelogPromises = changelogsToFetch.map((obj) => fetchChangelog(ISO_START, ISO_END, obj.id, obj.title));
+            return Promise.all(allChangelogPromises);
         })
-        .then((response) => response.text())
-        .then((changelog) => {
-            spinner.innerHTML = "";
-            renderChangelog(changelog);
-        })
+        // .then((allChangelogs) => { renderChangelog(allChangelogs); })
         .catch((error) => {
+            for (const k in changelogs)
+                changelogs[k].innerHTML = "(check the console log) Big error :(";
             console.error("Error:", error);
-            spinner.innerHTML = "";
         });
     }
 
-    function renderMessages(returnedData) {
-        spinner.innerText = returnedData;
+    function fetchChangelog(ISO_START, ISO_END, ID, title) {
+        const CHANGELOG_URL = `/core/changelog/?time_before=${ISO_END}&time_after=${ISO_START}&changed_object_type_id=${ID}&per_page=1000`;
+        return fetch(CHANGELOG_URL, { headers: {
+            "X-CSRFToken": csrftoken,
+            "Content-Type": "application/json",
+        }})
+        .then((response) => response.text())
+        .then((data) => {
+            return renderChangelog(ID, title, data);
+        });
+
     }
 
-    function renderChangelog(changelogPageText) {
+    // function renderMessages(returnedData) { spinner.innerText = returnedData; }
+
+    function renderChangelog(id, title, data) {
         const parser = new DOMParser();
-        const doc = parser.parseFromString(changelogPageText, "text/html");
-        const table = doc.getElementsByClassName("card")[0];
+        const doc = parser.parseFromString(data, "text/html");
+        const table = doc.getElementsByClassName("table-responsive")[0];
         if (table) {
-            changelog.appendChild(table);
+            changelogs[title].innerHTML = "";
+            changelogs[title].appendChild(table);
+        } else {
+            changelogs[title].innerHTML = "Nothing to show :)";
         }
     }
 
