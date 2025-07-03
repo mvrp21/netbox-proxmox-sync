@@ -3,7 +3,6 @@ from proxmoxer import ProxmoxAPI
 
 class Proxmox:
 
-    vminterfaces = []
 
     def __init__(self, config):
         self.proxmox = ProxmoxAPI(
@@ -14,6 +13,7 @@ class Proxmox:
             token_value=config["token"]["value"],
             verify_ssl=config["verify_ssl"],
         )
+        self.vminterfaces = []
 
     def get_tags(self):
         options = self.proxmox.cluster.options.get()

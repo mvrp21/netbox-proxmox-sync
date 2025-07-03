@@ -13,14 +13,15 @@ class NetBoxUpdater:
     def __init__(self, proxmox_connection):
         self.connection = proxmox_connection
 
-    def update_tags(self, categorized_tags):
+    def update_tags(self, categorized_tags, nodelete_tagnames=set()):
         errors = []
         created = []
         updated = []
         deleted = []
 
+        vm_contenttype = ContentType.objects.get(app_label="virtualization", model="virtualmachine")
+
         for tag in categorized_tags["create"]:
-            vm_contenttype = ContentType.objects.get(app_label="virtualization", model="virtualmachine")
             try:
                 new_tag = Tag.objects.create(
                     name=tag["name"],
@@ -28,9 +29,10 @@ class NetBoxUpdater:
                     color=tag["color"],
                     # object_types=[vm_contenttype]
                 )
-                new_tag.object_types.set([vm_contenttype])
+                new_tag.object_types.set([vm_contenttype.id])
                 created.append(new_tag)
             except Exception as e:
+                raise e
                 errors.append(e)
         # ======================================================================================== #
         for tag in categorized_tags["update"]:
@@ -38,16 +40,20 @@ class NetBoxUpdater:
             updated_tag.slug = tag["after"]["slug"]
             updated_tag.color = tag["after"]["color"]
             try:
+                # Note: if another cluster has a different color this will keep updating too
+                # Yeah... Idk man... Multi-cluster while managing tags too is weird
                 updated_tag.save()
-                updated_tag.object_types.set(["virtualization.virtualmachine"])
-                created.append(updated_tag)
+                updated_tag.object_types.set([vm_contenttype.id])
+                updated.append(updated_tag)
             except Exception as e:
+                raise e
                 errors.append(e)
         # ======================================================================================== #
         for tag in categorized_tags["delete"]:
             try:
-                tag.delete()
-                deleted.append(tag)
+                if tag.name not in nodelete_tagnames:
+                    tag.delete()
+                    deleted.append(tag)
             except Exception as e:
                 errors.append(e)
 
@@ -66,7 +72,7 @@ class NetBoxUpdater:
         deleted = []
 
         tags_by_name = {
-            t.name: t for t in Tag.objects.filter(slug__istartswith=f"px_{self.connection.id}__")
+            t.name: t for t in Tag.objects.filter(slug__istartswith=f"nbpsync__")
         }
         devices_by_name = {
             device.name: device for device in Device.objects.filter(cluster=self.connection.cluster)
@@ -152,7 +158,7 @@ class NetBoxUpdater:
             # updated_vmi.mac_address = vmi["after"]["mac_address"]
             updated_vmi.primary_mac_address = MACAddress.objects.update_or_create(mac_address=vmi["after"]["mac_address"])[0]
             updated_vmi.mode = vmi["after"]["mode"]
-            updated_vmi.vlan = vlans_by_vid.get(vmi["after"]["untagged_vlan"]["vid"])
+            updated_vmi.untagged_vlan = vlans_by_vid.get(vmi["after"]["untagged_vlan"]["vid"])
             updated_vmi.virtual_machine = vms_by_name.get(vmi["after"]["virtual_machine"]["name"])
             try:
                 updated_vmi.save()

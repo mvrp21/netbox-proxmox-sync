@@ -13,7 +13,7 @@ class NetBoxParser:
         nb_tags = []
         for name, color in px_tags.items():
             tag_slug = name.lower().replace(" ", "-").replace(".", "_")
-            tag_slug = f"px_{self.connection.id}__{tag_slug}"
+            tag_slug = f"nbpsync__{tag_slug}"
             tag_color = self.default_tag_color if color is None else color
             nb_tags.append({
                 "name": name,
@@ -60,6 +60,15 @@ class NetBoxParser:
                 "untagged_vlan": {"vid": int(vlanid)},
             }
             nb_vminterfaces.append(interface)
+        if len(px_interface_list) < 100 and self.connection.cluster.id == 4:
+            raise Exception("mano wtf klkkkkkkk")
+        if len(px_interface_list) > 100 and self.connection.cluster.id == 5:
+            A = None
+            for px_interface in px_interface_list:
+                if px_interface["name"] == "email:net0":
+                    A = px_interface
+                    break
+            raise Exception("mano wtf klkkkkkkk")
         return nb_vminterfaces
 
     def _extract_mac_vlan(self, net_string):

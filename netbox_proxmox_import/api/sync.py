@@ -82,8 +82,34 @@ def categorize_operations(connection, parsed_data):
 
 def update_netbox(connection, categorized_data):
     nb = NetBoxUpdater(connection)
+
+    # Do not delete tags that are in use by other clusters (janky for now, but works)
+    other_clusters = models.ProxmoxConnection.objects.exclude(pk=connection.id)
+    nodelete_tagnames = set()
+    for cluster in other_clusters:
+        try:
+            other_px = Proxmox({
+                "host": cluster.domain,
+                "port": cluster.port,
+                "user": cluster.user,
+                "token": {
+                    "name": cluster.token_id,
+                    "value": cluster.token_secret,
+                },
+                "verify_ssl": cluster.verify_ssl,
+            })
+            other_tags = other_px.get_tags()
+            for tag in other_tags.keys():
+                nodelete_tagnames.add(tag)
+        except:
+            # Yeah... fail silently...
+            # If you can't connect to the cluster there's no way to know which tags not to delete
+            # Just because another connection failed it does not mean this one has to
+            pass
+
+
     return {
-        "tags": nb.update_tags(categorized_data["tags"]),
+        "tags": nb.update_tags(categorized_data["tags"], nodelete_tagnames),
         "vms": nb.update_vms(categorized_data["vms"]),
         "vminterfaces": nb.update_vminterfaces(categorized_data["vminterfaces"]),
     }

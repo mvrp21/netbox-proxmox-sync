@@ -1,5 +1,4 @@
 import json
-from django.core.serializers import serialize
 from extras.models import Tag
 from dcim.models import Device
 from virtualization.models import VirtualMachine, VMInterface
@@ -53,13 +52,13 @@ class NetBoxCategorizer:
 
     def categorize_vms(self, parsed_vms):
         devices_by_name = {
-            device.name: device for device in Device.objects.filter(cluster=self.connection.cluster)
+            device.name: device for device in Device.objects.filter(cluster_id=self.connection.cluster.id)
         }
         existing_vms_by_name = {
-            vm.name: vm for vm in VirtualMachine.objects.filter(cluster=self.connection.cluster)
+            vm.name: vm for vm in VirtualMachine.objects.filter(cluster_id=self.connection.cluster.id)
         }
         tags_by_name = {
-            t.name: t for t in Tag.objects.filter(slug__istartswith=f"px_{self.connection.id}__")
+            t.name: t for t in Tag.objects.filter(slug__istartswith=f"nbpsync__")
         }
 
         create = []
@@ -121,7 +120,7 @@ class NetBoxCategorizer:
         return True
 
     def categorize_vminterfaces(self, parsed_vminterfaces):
-        existing_vms = VirtualMachine.objects.filter(cluster=self.connection.cluster)
+        existing_vms = VirtualMachine.objects.filter(cluster_id=self.connection.cluster.id)
         existing_vminterfaces_by_name = {
             vmi.name: vmi for vmi in \
             VMInterface.objects.filter(virtual_machine__in=existing_vms)
@@ -155,6 +154,13 @@ class NetBoxCategorizer:
 
         for vmi_name in deleted_vminterfaces_set:
             delete.append(existing_vminterfaces_by_name[vmi_name])
+
+        if len(create) > 5:
+            A = self.connection.id
+            B = self.connection.cluster.id
+            C = len(existing_vms)
+            C = len(existing_vminterfaces_by_name.keys())
+            raise Exception("Queria dizer q n to confuso mas to")
 
         return {
             "create": create,
