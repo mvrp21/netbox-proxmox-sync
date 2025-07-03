@@ -32,7 +32,6 @@ class NetBoxUpdater:
                 new_tag.object_types.set([vm_contenttype.id])
                 created.append(new_tag)
             except Exception as e:
-                raise e
                 errors.append(e)
         # ======================================================================================== #
         for tag in categorized_tags["update"]:
@@ -46,7 +45,6 @@ class NetBoxUpdater:
                 updated_tag.object_types.set([vm_contenttype.id])
                 updated.append(updated_tag)
             except Exception as e:
-                raise e
                 errors.append(e)
         # ======================================================================================== #
         for tag in categorized_tags["delete"]:

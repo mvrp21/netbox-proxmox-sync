@@ -155,13 +155,6 @@ class NetBoxCategorizer:
         for vmi_name in deleted_vminterfaces_set:
             delete.append(existing_vminterfaces_by_name[vmi_name])
 
-        if len(create) > 5:
-            A = self.connection.id
-            B = self.connection.cluster.id
-            C = len(existing_vms)
-            C = len(existing_vminterfaces_by_name.keys())
-            raise Exception("Queria dizer q n to confuso mas to")
-
         return {
             "create": create,
             "update": update,

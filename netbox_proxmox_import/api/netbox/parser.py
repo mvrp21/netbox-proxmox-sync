@@ -60,15 +60,6 @@ class NetBoxParser:
                 "untagged_vlan": {"vid": int(vlanid)},
             }
             nb_vminterfaces.append(interface)
-        if len(px_interface_list) < 100 and self.connection.cluster.id == 4:
-            raise Exception("mano wtf klkkkkkkk")
-        if len(px_interface_list) > 100 and self.connection.cluster.id == 5:
-            A = None
-            for px_interface in px_interface_list:
-                if px_interface["name"] == "email:net0":
-                    A = px_interface
-                    break
-            raise Exception("mano wtf klkkkkkkk")
         return nb_vminterfaces
 
     def _extract_mac_vlan(self, net_string):
